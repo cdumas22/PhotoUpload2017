@@ -14,7 +14,7 @@ $RECYCLE.BIN/
 *.msm
 *.msp
 
-wwwroot/lib
+wwwroot\lib
 bin
 obj
 

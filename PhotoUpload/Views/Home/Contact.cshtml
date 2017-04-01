@@ -1,17 +1,384 @@
 ﻿@{
     ViewData["Title"] = "Contact";
 }
+
+@model PhotoUpload.ViewModels.ContactViewModel
+
 <h2>@ViewData["Title"].</h2>
 <h3>@ViewData["Message"]</h3>
 
-<address>
-    One Microsoft Way<br />
-    Redmond, WA 98052-6399<br />
-    <abbr title="Phone">P:</abbr>
-    425.555.0100
-</address>
+<form asp-action="@nameof(PhotoUpload.Controllers.HomeController.Contact)" method="post" role="form">
+    <div id="photo-uploads">
+        <div class="begin-uploads" 
+             style="border:dashed 3px #808080; background: #e3e3e3; padding:30px 10px;margin: 10px;">
+            Add Photo Cropper
+        </div>
+    </div>
 
-<address>
-    <strong>Support:</strong> <a href="mailto:Support@example.com">Support@example.com</a><br />
-    <strong>Marketing:</strong> <a href="mailto:Marketing@example.com">Marketing@example.com</a>
-</address>
+    <input type="submit" value="Submit"/>
+    
+</form>
+
+<script type="text/template" id="photo-upload-cropper-template">
+    <div class="panel panel-default photo-cropper">
+        <div class="panel-heading">
+            <div class="btn-group btn-group-sm pull-right">
+                <button type="button" class="remove btn btn-default" style="display:none;" name="Remove">
+                    <i class="glyphicon glyphicon-remove text-danger"></i>
+                </button>
+                <button type="button" class="accept-crop btn btn-default" style="display:none;" name="Crop">
+                    <i class="glyphicon glyphicon-ok text-success"></i>
+                </button>
+                <button type="button" class="recrop btn btn-default" style="display:none;" name="Recrop">
+                    <i class="glyphicon glyphicon-resize-full"></i>
+                </button>
+            </div>
+            <div class="clearfix"></div>
+        </div>
+        <div class="upload-body">
+            <div class="photo-preview text-center" style="display:none;">
+                <img class="cropper-image" src=""/>
+            </div>
+            <div class="loading text-center panel-body" style="display:none;">Loading...</div>
+            <div class="upload-photo">
+                <label class="btn-file dropZone">
+                    <h3 class="text-center">
+                        <i class="fa fa-upload"></i>
+                        <span class="text-uppercase">
+                            <span class="uploaderText">Drag an image here</span>
+                        </span>
+                        <small class="uploaderSubText">or click to <u>browse your computer...</u></small>
+                    </h3>
+                    <input class="photo-input"
+                           style="display: none"
+                           type="file"
+                           accept="image/*"
+                           onchange="photoCropper.photoSelected($(this).parents('.photo-cropper'), this.files[0])">
+                    @*this is the input that will be posted on form submit*@
+                    <input class="photo-data" type="hidden" />
+                </label>
+            </div>
+        </div>
+    </div>
+</script>
+
+
+@section scripts {
+    @*your custom initialization of all the photo uploaders*@
+    <script>
+        $(function () {
+            //when the page is ready create a cropper for every image that you want to crop
+            photoCropper.createCropper({
+                inputName: '@Html.NameFor(x => x.ImageDataUrl)',
+                photoUrl: '@Model.ImageDataUrl',
+                maxWidth: 300,
+                cropperOptions: {}
+            });
+        });
+    </script>
+
+
+
+
+    <script src="~/lib/cropperjs/dist/cropper.js"></script>
+    <link href="~/lib/cropperjs/dist/cropper.css" rel="stylesheet">
+    <style type="text/css">
+        .photo-cropper .panel-heading {
+            height: 50px;
+        }
+        .photo-cropper .photo-preview {
+            width:100%;
+            height:100%;
+        }
+        .photo-cropper .dropZone {
+            cursor:pointer;
+            border: dashed 3px darkgray;
+            border-radius: 10px;
+            padding: 30px;
+            margin: 20px;
+            display:block;
+        }
+    </style>
+    <script>
+        (function (photoCropper) {
+            var parent = $('#photo-uploads');
+            //attach to the begin button to create croppers when you click on it.
+            //this will probably be removed. and instead you will iterate over all the 
+            //photo inputs you want to create and call photoCropper.createCropper(nameOfYourInputWithWhatTheBackendExpects);
+            parent.on('click', '.begin-uploads', function () {
+                photoCropper.createCropper();
+            });
+
+            /*public methods*/
+            //factory for creating cropper
+            /* options
+                inputName - string
+                *photoUrl - string (url or base64 image data)
+                *maxWidth - int - the max width in pixels you want the image to use
+                *cssClass - string -a custom class you want for the croller
+                *cropperOptions - object - additional options you want for the cropperjs library
+            */
+            photoCropper.createCropper = function (options) {
+
+                var photoCropper = new PhotoCropper(options);
+                photoCropper.container.appendTo(parent);
+                return photoCropper;
+            };
+             //this is a public method that can be called from the input
+            photoCropper.photoSelected = function (parent, file) {
+                var cropper = croppers.find(function (x) {
+                    return x.container[0] === parent[0];
+                });
+
+                cropper.photoSelected(file);
+            };
+
+            /*private variables*/
+            var template = $('#photo-upload-cropper-template').html();
+            var croppers = [];
+            var defaultOptions = {
+                zoomable: false
+            };
+            /*Private methods*/
+            
+            //private class for Photo Croppers
+            function PhotoCropper(options) {
+                //create the template
+                var uploadTemplate = $(template).clone().addClass(options.cssClass);
+                this.container = uploadTemplate;
+                this.maxWidth = options.maxWidth;
+                this.cropperOptions = options.cropperOptions;
+                //make sure the inputs have a unique name
+                this.uniqueName = options.inputName || 'photo-' + guid();
+                
+                //initialize all the buttons
+                this.setNameForInput(this.uniqueName)
+                    .initializeEvents()
+                    .initImage(options.photoUrl);
+
+                //save reference of all croppers created
+                croppers.push(this);
+
+                return this;
+            }
+
+            PhotoCropper.prototype = {
+                Events: {
+                    CropAccept: 'crop-accept',
+                    Recrop: 'recrop',
+                    Upload: 'upload',
+                    Delete: 'delete',
+                    Loading: 'loading'
+                },
+                setNameForInput: function (name) {
+                    this.container.find('label').attr('for', name);
+                    this.container.find('input.photo-input').attr('id', name);
+                    this.container.find('input.photo-data').attr('name', name);
+                    return this;
+                },
+                initializeEvents: function () {
+                    var _this = this;
+                    //add actions
+                    this.container.find('.remove').click(call(this.remove));
+                    this.container.find('.accept-crop').click(call(this.crop));
+                    this.container.find('.recrop').click(call(this.recrop));
+
+                    // Initialize drop zone.
+                    this.container.find('.dropZone')
+                        .on('dragover', stop)
+                        .on('dragenter', stop)
+                        .on('drop', function (e) {
+                            if (e.originalEvent.dataTransfer && e.originalEvent.dataTransfer.files.length) {
+                                stop(e);
+                                _this.photoSelected(e.originalEvent.dataTransfer.files[0]);
+                            }
+                        });
+
+                    return this;
+
+                    function stop(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                    }
+                    function call(method) {
+                        return function () {
+                            method.apply(_this, arguments);
+                        };
+                    }
+                },
+                trigger: function (event) {
+                    var showUpload = showDelete = showAccept = showReset = showPreview = showLoading = false;
+                    
+                    switch (event) {
+                        case this.Events.Loading:
+                            showLoading = true;
+                            break;
+                        case this.Events.Delete:
+                            showUpload = true;
+                            break;
+                        case this.Events.CropAccept:
+                            showDelete = showReset = showPreview = true;
+                            break;
+                        case this.Events.Recrop:
+                            showAccept = showDelete = showPreview = true;
+                            break;
+                        case this.Events.Upload:
+                            showDelete = showAccept = showPreview = true;
+                            break;
+                    }
+
+                    //set the image
+                    this.container.find('.cropper-image').attr('src', this.dataUrl).css({ maxWidth: this.maxWidth });
+                    this.container.find('.photo-data').val(this.dataUrl);
+                    //show elements
+                    this.container.find('.loading').toggle(showLoading);
+                    this.container.find('.upload-photo').toggle(showUpload);
+                    this.container.find('.photo-preview').toggle(showPreview);
+                    this.container.find('.remove').toggle(showDelete);
+                    this.container.find('.accept-crop').toggle(showAccept);
+                    this.container.find('.recrop').toggle(showReset);
+
+                    return this;
+                },
+                photoSelected: function (file) {
+                    var _this = this;
+                    //make sure they selected the correct image type
+                    if (file && /^image\/\w+/.test(file.type)) {
+                        //get the correct upload on the page
+                        var reader = new FileReader();
+                        this.trigger(this.Events.Loading);
+                        this.type = file.type;
+                        reader.onload = function (e) {
+                            _this
+                                .initImage.call(_this, e.target.result)
+                                    .trigger(_this.Events.Upload)
+                                    .initCropper();
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                    else {
+                        alert('Please Upload an image.');
+                    }
+
+                    return this;
+                },
+                remove: function () {
+                    this.dataUrl = null;
+                    this.stop().trigger(this.Events.Delete);
+
+                    return this;
+                },
+                crop: function () {
+                    this.originalUrl = this.dataUrl;
+                    this.data = this.cropper.getData();
+                    this.canvasData = this.cropper.getCanvasData();
+                    this.cropBoxData = this.cropper.getCropBoxData();
+                    this.dataUrl = this.cropper.getCroppedCanvas(this.type === 'image/png' ? null : {
+                        fillColor: '#fff'
+                    }).toDataURL(this.type);
+                    
+                    this.stop();
+
+                    this.trigger(this.Events.CropAccept);
+                },
+                recrop: function () {
+                    if (!this.cropper) {
+                        this.dataUrl = !!this.originalUrl ? this.originalUrl : this.dataUrl;
+                        this.originalUrl = '';
+
+                        this.trigger(this.Events.Recrop).initCropper();
+                    }
+
+                    return this;
+                },
+                stop: function () {
+                    if (this.cropper) {
+                        this.cropper.destroy();
+                        this.cropper = null;
+                    }
+
+                    return this;
+                },
+                initCropper: function () {
+                    var _this = this;
+                    this.cropperOptions || (this.cropperOptions = {});
+
+                    var options = $.extend(defaultOptions, this.cropperOptions);
+
+                    var callback = options.built || function () { };
+                    options.built = function built() {
+                        if (_this.data) {
+                            this.cropper.crop().setData(_this.data).setCanvasData(_this.canvasData).setCropBoxData(_this.cropBoxData);
+                            _this.data = null;
+                            _this.canvasData = null;
+                            _this.cropBoxData = null;
+                        }
+                        callback();
+                    }
+                    //create a new cropper with the options
+                    this.cropper = new Cropper(this.container.find('.cropper-image')[0], options);
+
+                    return this;
+                },
+                initImage: function (dataUrl) {
+                    if (dataUrl) {
+                        this.dataUrl = dataUrl;
+                        this.trigger(this.Events.CropAccept);
+                    }
+
+                    return this;
+                }
+            }
+            //i may need to add in a scaling function so that it wont try and work on huge photos
+            //function scale(file, data, callback) {
+            //    encode(file, function (url) {
+            //        _createImage(url, function (image) {
+            //            var heightOrig = image.height;
+            //            var widthOrig = image.width;
+            //            var ratio, height, width;
+
+            //            if (typeof data === 'number') {
+            //                ratio = data;
+            //                height = heightOrig * ratio;
+            //                width = widthOrig * ratio;
+            //            }
+
+            //            if (typeof data === 'object') {
+            //                ratio = widthOrig / heightOrig;
+            //                height = data.height;
+            //                width = data.width;
+
+            //                if (height && !width)
+            //                    width = height * ratio;
+            //                else if (width && !height)
+            //                    height = width / ratio;
+            //            }
+
+            //            var canvas = createCanvas(data);
+            //            var context = canvas.getContext('2d');
+
+            //            canvas.height = height;
+            //            canvas.width = width;
+
+            //            context.drawImage(image, 0, 0, widthOrig, heightOrig, 0, 0, width, height);
+
+            //            var encoded = canvas.toDataURL(file.type);
+            //            canvas.parentElement.removeChild(canvas);
+
+            //            callback(decode(encoded));
+            //        });
+            //    });
+            //}
+            function guid() {
+                function s4() {
+                    return Math.floor((1 + Math.random()) * 0x10000)
+                        .toString(16)
+                        .substring(1);
+                }
+                return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
+                    s4() + '-' + s4() + s4() + s4();
+            }
+        })(window.photoCropper = window.photoCropper || {});
+    </script>
+}
