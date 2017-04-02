@@ -3,83 +3,34 @@
 }
 
 @model PhotoUpload.ViewModels.ContactViewModel
-
-<h2>@ViewData["Title"].</h2>
-<h3>@ViewData["Message"]</h3>
-
+<h1>Photo Cropper Demo</h1>
 <form asp-action="@nameof(PhotoUpload.Controllers.HomeController.Contact)" method="post" role="form">
-    <div id="photo-uploads">
-        <div class="begin-uploads" 
-             style="border:dashed 3px #808080; background: #e3e3e3; padding:30px 10px;margin: 10px;">
-            Add Photo Cropper
-        </div>
-    </div>
-
+    <div id="photo-uploads" class="col-md-6"></div>
+    <div id="photo-uploads2" class="col-md-6"></div>
     <input type="submit" value="Submit"/>
-    
 </form>
-
-<script type="text/template" id="photo-upload-cropper-template">
-    <div class="panel panel-default photo-cropper">
-        <div class="panel-heading">
-            <div class="btn-group btn-group-sm pull-right">
-                <button type="button" class="remove btn btn-default" style="display:none;" name="Remove">
-                    <i class="glyphicon glyphicon-remove text-danger"></i>
-                </button>
-                <button type="button" class="accept-crop btn btn-default" style="display:none;" name="Crop">
-                    <i class="glyphicon glyphicon-ok text-success"></i>
-                </button>
-                <button type="button" class="recrop btn btn-default" style="display:none;" name="Recrop">
-                    <i class="glyphicon glyphicon-resize-full"></i>
-                </button>
-            </div>
-            <div class="clearfix"></div>
-        </div>
-        <div class="upload-body">
-            <div class="photo-preview text-center" style="display:none;">
-                <img class="cropper-image" src=""/>
-            </div>
-            <div class="loading text-center panel-body" style="display:none;">Loading...</div>
-            <div class="upload-photo">
-                <label class="btn-file dropZone">
-                    <h3 class="text-center">
-                        <i class="fa fa-upload"></i>
-                        <span class="text-uppercase">
-                            <span class="uploaderText">Drag an image here</span>
-                        </span>
-                        <small class="uploaderSubText">or click to <u>browse your computer...</u></small>
-                    </h3>
-                    <input class="photo-input"
-                           style="display: none"
-                           type="file"
-                           accept="image/*"
-                           onchange="photoCropper.photoSelected($(this).parents('.photo-cropper'), this.files[0])">
-                    @*this is the input that will be posted on form submit*@
-                    <input class="photo-data" type="hidden" />
-                </label>
-            </div>
-        </div>
-    </div>
-</script>
-
 
 @section scripts {
     @*your custom initialization of all the photo uploaders*@
     <script>
         $(function () {
-            //when the page is ready create a cropper for every image that you want to crop
-            photoCropper.createCropper({
+            //the PhotoCropper will be appended to the element. it will not replace the content
+            $('#photo-uploads').PhotoCropper({
                 inputName: '@Html.NameFor(x => x.ImageDataUrl)',
                 photoUrl: '@Model.ImageDataUrl',
                 maxWidth: 300,
-                cropperOptions: {}
+                cropperOptions: {
+                    aspectRatio: 16 / 9
+                }
+            });
+            $('#photo-uploads2').PhotoCropper({
+                inputName: '@Html.NameFor(x => x.Image2DataUrl)',
+                maxWidth: 300
             });
         });
     </script>
 
-
-
-
+    @*PhotoCropper plugin*@
     <script src="~/lib/cropperjs/dist/cropper.js"></script>
     <link href="~/lib/cropperjs/dist/cropper.css" rel="stylesheet">
     <style type="text/css">
@@ -99,29 +50,77 @@
             display:block;
         }
     </style>
-    <script>
-        (function (photoCropper) {
-            var parent = $('#photo-uploads');
-            //attach to the begin button to create croppers when you click on it.
-            //this will probably be removed. and instead you will iterate over all the 
-            //photo inputs you want to create and call photoCropper.createCropper(nameOfYourInputWithWhatTheBackendExpects);
-            parent.on('click', '.begin-uploads', function () {
-                photoCropper.createCropper();
-            });
+    <script type="text/template" id="photo-upload-cropper-template">
+        <div class="panel panel-default photo-cropper">
+            <div class="panel-heading">
+                <div class="btn-group btn-group-sm pull-right">
+                    <button type="button" class="remove btn btn-default" style="display:none;" name="Remove">
+                        <i class="fa fa-trash text-danger"></i>
+                    </button>
+                    <button type="button" class="accept-crop btn btn-default" style="display:none;" name="Crop">
+                        <i class="fa fa-check text-success"></i>
+                    </button>
+                    <button type="button" class="recrop btn btn-default" style="display:none;" name="Recrop">
+                        <i class="fa fa-crop"></i>
+                    </button>
+                </div>
+                <div class="clearfix"></div>
+            </div>
+            <div class="upload-body">
+                <div class="photo-preview text-center" style="display:none;">
+                    <img class="cropper-image" src="" />
+                </div>
+                <div class="loading text-center panel-body" style="display:none;">
+                    <i class="fa fa-circle-o-notch fa-spin fa-3x fa-fw"></i>
+                </div>
+                <div class="upload-photo">
+                    <label class="btn-file dropZone">
+                        <h3 class="text-center">
+                            <i class="fa fa-upload"></i>
+                            <span class="text-uppercase">
+                                <span class="uploaderText">Drag an image here</span>
+                            </span>
+                            <small class="uploaderSubText">or click to <u>browse your computer...</u></small>
+                        </h3>
+                        <input class="photo-input"
+                               style="display: none"
+                               type="file"
+                               accept="image/*"
+                               onchange="photoCropper.photoSelected($(this).parents('.photo-cropper'), this.files[0])">
+                        @*this is the input that will be posted on form submit*@
+                        <input class="photo-data" type="hidden" />
+                    </label>
+                </div>
+            </div>
+        </div>
+    </script>
 
+    <script>
+        (function ($, photoCropper) {
             /*public methods*/
+
+            //jquery extension for initializing a cropper with jquery
+            //you can get to the instance that was created by doing $(el).data('photoCropper')
+            $.fn.PhotoCropper = function (options) {
+                options.appendTo = this;
+                var cropper = photoCropper.createCropper(options);
+                this.data('photoCropper', cropper);
+                return this;
+            };
+
             //factory for creating cropper
             /* options
-                inputName - string
+                *inputName - string - if none is provided it will use a guid
+                *appendTo - selector/element - if none is provided it will not add it to the page. you can manually add it to the page with the instance.container
                 *photoUrl - string (url or base64 image data)
                 *maxWidth - int - the max width in pixels you want the image to use
-                *cssClass - string -a custom class you want for the croller
+                *cssClass - string -a custom class you want on the cropper instance
                 *cropperOptions - object - additional options you want for the cropperjs library
             */
             photoCropper.createCropper = function (options) {
-
                 var photoCropper = new PhotoCropper(options);
-                photoCropper.container.appendTo(parent);
+
+                photoCropper.container.appendTo(options.appendTo);
                 return photoCropper;
             };
              //this is a public method that can be called from the input
@@ -209,7 +208,7 @@
                 },
                 trigger: function (event) {
                     var showUpload = showDelete = showAccept = showReset = showPreview = showLoading = false;
-                    
+
                     switch (event) {
                         case this.Events.Loading:
                             showLoading = true;
@@ -252,12 +251,12 @@
                         reader.onload = function (e) {
                             _this
                                 .initImage.call(_this, e.target.result)
-                                    .trigger(_this.Events.Upload)
-                                    .initCropper();
+                                .trigger(_this.Events.Upload)
+                                .initCropper();
                         };
                         reader.readAsDataURL(file);
                     }
-                    else {
+                    else if (file) {
                         alert('Please Upload an image.');
                     }
 
@@ -265,6 +264,7 @@
                 },
                 remove: function () {
                     this.dataUrl = null;
+                    this.data = null;
                     this.stop().trigger(this.Events.Delete);
 
                     return this;
@@ -272,12 +272,10 @@
                 crop: function () {
                     this.originalUrl = this.dataUrl;
                     this.data = this.cropper.getData();
-                    this.canvasData = this.cropper.getCanvasData();
-                    this.cropBoxData = this.cropper.getCropBoxData();
                     this.dataUrl = this.cropper.getCroppedCanvas(this.type === 'image/png' ? null : {
                         fillColor: '#fff'
                     }).toDataURL(this.type);
-                    
+
                     this.stop();
 
                     this.trigger(this.Events.CropAccept);
@@ -302,22 +300,14 @@
                 },
                 initCropper: function () {
                     var _this = this;
-                    this.cropperOptions || (this.cropperOptions = {});
-
-                    var options = $.extend(defaultOptions, this.cropperOptions);
-
-                    var callback = options.built || function () { };
-                    options.built = function built() {
-                        if (_this.data) {
-                            this.cropper.crop().setData(_this.data).setCanvasData(_this.canvasData).setCropBoxData(_this.cropBoxData);
-                            _this.data = null;
-                            _this.canvasData = null;
-                            _this.cropBoxData = null;
-                        }
-                        callback();
-                    }
+                    var options = $.extend({}, defaultOptions, this.cropperOptions || {});
                     //create a new cropper with the options
                     this.cropper = new Cropper(this.container.find('.cropper-image')[0], options);
+
+                    //if we have a current crop zone lets apply it when we start cropping again.
+                    if (this.data) {
+                        this.cropper.setData(this.data);
+                    }
 
                     return this;
                 },
@@ -329,7 +319,7 @@
 
                     return this;
                 }
-            }
+            };
             //i may need to add in a scaling function so that it wont try and work on huge photos
             //function scale(file, data, callback) {
             //    encode(file, function (url) {
@@ -379,6 +369,6 @@
                 return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
                     s4() + '-' + s4() + s4() + s4();
             }
-        })(window.photoCropper = window.photoCropper || {});
+        })(jQuery, window.photoCropper = window.photoCropper || {});
     </script>
 }

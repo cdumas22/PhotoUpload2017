@@ -18,6 +18,7 @@ namespace PhotoUpload.ViewModels
         }
 
         public string ImageDataUrl { get; set; }
+        public string Image2DataUrl { get; set; }
 
 
         public CropInformation CropInformation
