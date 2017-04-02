@@ -23,10 +23,7 @@
                     aspectRatio: 16 / 9
                 }
             });
-            $('#photo-uploads2').PhotoCropper({
-                inputName: '@Html.NameFor(x => x.Image2DataUrl)',
-                maxWidth: 300
-            });
+            $('#photo-uploads2').PhotoCropper();
         });
     </script>
 
@@ -102,6 +99,7 @@
             //jquery extension for initializing a cropper with jquery
             //you can get to the instance that was created by doing $(el).data('photoCropper')
             $.fn.PhotoCropper = function (options) {
+                options || (options = {});
                 options.appendTo = this;
                 var cropper = photoCropper.createCropper(options);
                 this.data('photoCropper', cropper);
@@ -145,7 +143,7 @@
                 //create the template
                 var uploadTemplate = $(template).clone().addClass(options.cssClass);
                 this.container = uploadTemplate;
-                this.maxWidth = options.maxWidth;
+                this.maxWidth = options.maxWidth || 'calc(100%)';
                 this.cropperOptions = options.cropperOptions;
                 //make sure the inputs have a unique name
                 this.uniqueName = options.inputName || 'photo-' + guid();
