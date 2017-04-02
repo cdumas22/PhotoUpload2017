@@ -11,25 +11,12 @@ namespace PhotoUpload.Controllers
     {
         public IActionResult Index()
         {
-            return View();
+            return View(new IndexViewModel());
         }
 
-        public IActionResult About()
-        {
-            ViewData["Message"] = "Your application description page.";
-
-            return View();
-        }
-
-        public IActionResult Contact()
-        {
-            ViewData["Message"] = "Your contact page.";
-
-            return View(new ContactViewModel());
-        }
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult Contact(ContactViewModel model)
+        public IActionResult Index(IndexViewModel model)
         {
             //if (ModelState.IsValid)
             //{

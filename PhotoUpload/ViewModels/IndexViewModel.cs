@@ -5,14 +5,14 @@ using System.Threading.Tasks;
 
 namespace PhotoUpload.ViewModels
 {
-    public class ContactViewModel
+    public class IndexViewModel
     {
-        public ContactViewModel()
+        public IndexViewModel()
         {
         }
 
 
-        public ContactViewModel(string imageUrl)
+        public IndexViewModel(string imageUrl)
         {
             ImageDataUrl = imageUrl;
         }
