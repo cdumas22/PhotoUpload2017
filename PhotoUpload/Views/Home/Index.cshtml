@@ -21,9 +21,17 @@
                 maxWidth: 300,
                 cropperOptions: {
                     aspectRatio: 16 / 9
+                },
+                onDelete: function (options) {
+                    console.log(options);
+                    //demo wait 10 seconds then readd the widget
+                    setTimeout(function () {
+                        $('#photo-uploads').PhotoCropper(options);
+                    }, 10000);
+
                 }
             });
-            $('#photo-uploads2').PhotoCropper();
+            $('#photo-uploads').PhotoCropper();
         });
     </script>
 
@@ -31,10 +39,6 @@
     <script src="~/lib/cropperjs/dist/cropper.js"></script>
     <link href="~/lib/cropperjs/dist/cropper.css" rel="stylesheet">
     <style type="text/css">
-        .photo-cropper .panel-heading {
-            height: 50px;
-        }
-
         .photo-cropper .photo-preview {
             width: 100%;
             height: 100%;
@@ -53,8 +57,8 @@
         <div class="panel panel-default photo-cropper">
             <div class="panel-heading">
                 <div class="btn-group btn-group-sm pull-right">
-                    <button type="button" class="remove btn btn-default" style="display:none;" name="Remove">
-                        <i class="fa fa-trash text-danger"></i>
+                    <button type="button" class="reset btn btn-default" style="display:none;" name="Reset">
+                        <i class="fa fa-times"></i>
                     </button>
                     <button type="button" class="accept-crop btn btn-default" style="display:none;" name="Crop">
                         <i class="fa fa-check text-success"></i>
@@ -63,6 +67,9 @@
                         <i class="fa fa-crop"></i>
                     </button>
                 </div>
+                <button type="button" class="remove btn btn-default btn-sm" name="Remove">
+                    <i class="fa fa-trash text-danger"></i>
+                </button>
                 <div class="clearfix"></div>
             </div>
             <div class="upload-body">
@@ -100,11 +107,40 @@
 
             //jquery extension for initializing a cropper with jquery
             //you can get to the instance that was created by doing $(el).data('photoCropper')
+            //this will give all instances of the croppers created on this element
             $.fn.PhotoCropper = function (options) {
                 options || (options = {});
+
+                var _this = this,
+                    cropper,
+                    croppersForElement = this.data('photoCropper') || [],
+                    onDelete = options.onDelete;
+
                 options.appendTo = this;
-                var cropper = photoCropper.createCropper(options);
-                this.data('photoCropper', cropper);
+                options.onDelete = function (options) {
+                    //remove the data from the element
+                    var removedCropper = croppersForElement.splice(croppersForElement.indexOf(cropper), 1);
+
+                    if (croppersForElement.length) {
+                        _this.data('photoCropper', croppersForElement);
+                    }
+                    else {
+                        _this.removeData('photoCropper');
+                    }
+
+                    options.onDelete = onDelete;
+
+                    if (typeof onDelete === 'function') {
+                        onDelete(options);
+                    }
+                };
+
+                cropper = photoCropper.createCropper(options);
+
+                croppersForElement.push(cropper);
+
+                this.data('photoCropper', croppersForElement);
+
                 return this;
             };
 
@@ -115,6 +151,7 @@
                 *photoUrl - string (url or base64 image data)
                 *maxWidth - int - the max width in pixels you want the image to use
                 *cssClass - string -a custom class you want on the cropper instance
+                *onDelete - function(options) - callback for when the user deletes the widget has the options that were used to initialize the widget
                 *cropperOptions - object - additional options you want for the cropperjs library
             */
             photoCropper.createCropper = function (options) {
@@ -144,6 +181,7 @@
             function PhotoCropper(options) {
                 //create the template
                 var uploadTemplate = $(template).clone().addClass(options.cssClass);
+                this.options = options;
                 this.container = uploadTemplate;
                 this.maxWidth = options.maxWidth || 'calc(100%)';
                 this.cropperOptions = options.cropperOptions;
@@ -167,7 +205,8 @@
                     Recrop: 'recrop',
                     Upload: 'upload',
                     Delete: 'delete',
-                    Loading: 'loading'
+                    Loading: 'loading',
+                    Reset: 'reset'
                 },
                 setNameForInput: function (name) {
                     this.container.find('label').attr('for', name);
@@ -178,6 +217,7 @@
                 initializeEvents: function () {
                     var _this = this;
                     //add actions
+                    this.container.find('.reset').click(call(this.reset));
                     this.container.find('.remove').click(call(this.remove));
                     this.container.find('.accept-crop').click(call(this.crop));
                     this.container.find('.recrop').click(call(this.recrop));
@@ -207,23 +247,23 @@
                     }
                 },
                 trigger: function (event) {
-                    var showUpload = showDelete = showAccept = showReset = showPreview = showLoading = false;
+                    var showUpload = showReset = showDelete = showAccept = showCrop = showPreview = showLoading = false;
 
                     switch (event) {
                         case this.Events.Loading:
                             showLoading = true;
                             break;
-                        case this.Events.Delete:
+                        case this.Events.Reset:
                             showUpload = true;
                             break;
                         case this.Events.CropAccept:
-                            showDelete = showReset = showPreview = true;
+                            showReset = showCrop = showPreview = true;
                             break;
                         case this.Events.Recrop:
-                            showAccept = showDelete = showPreview = true;
+                            showAccept = showReset = showPreview = true;
                             break;
                         case this.Events.Upload:
-                            showDelete = showAccept = showPreview = true;
+                            showReset = showAccept = showPreview = true;
                             break;
                     }
 
@@ -234,9 +274,9 @@
                     this.container.find('.loading').toggle(showLoading);
                     this.container.find('.upload-photo').toggle(showUpload);
                     this.container.find('.photo-preview').toggle(showPreview);
-                    this.container.find('.remove').toggle(showDelete);
+                    this.container.find('.reset').toggle(showReset);
                     this.container.find('.accept-crop').toggle(showAccept);
-                    this.container.find('.recrop').toggle(showReset);
+                    this.container.find('.recrop').toggle(showCrop);
 
                     return this;
                 },
@@ -263,9 +303,20 @@
                     return this;
                 },
                 remove: function () {
+                    this.container.remove();
+
+                    if (typeof this.options.onDelete === 'function') {
+                        this.options.onDelete(this.options);
+                    }
+
+                    this.stop().trigger(this.Events.Delete);
+
+                    return this;
+                },
+                reset: function () {
                     this.dataUrl = null;
                     this.data = null;
-                    this.stop().trigger(this.Events.Delete);
+                    this.stop().trigger(this.Events.Reset);
 
                     return this;
                 },
@@ -320,46 +371,7 @@
                     return this;
                 }
             };
-            //i may need to add in a scaling function so that it wont try and work on huge photos
-            //function scale(file, data, callback) {
-            //    encode(file, function (url) {
-            //        _createImage(url, function (image) {
-            //            var heightOrig = image.height;
-            //            var widthOrig = image.width;
-            //            var ratio, height, width;
-
-            //            if (typeof data === 'number') {
-            //                ratio = data;
-            //                height = heightOrig * ratio;
-            //                width = widthOrig * ratio;
-            //            }
-
-            //            if (typeof data === 'object') {
-            //                ratio = widthOrig / heightOrig;
-            //                height = data.height;
-            //                width = data.width;
-
-            //                if (height && !width)
-            //                    width = height * ratio;
-            //                else if (width && !height)
-            //                    height = width / ratio;
-            //            }
-
-            //            var canvas = createCanvas(data);
-            //            var context = canvas.getContext('2d');
-
-            //            canvas.height = height;
-            //            canvas.width = width;
-
-            //            context.drawImage(image, 0, 0, widthOrig, heightOrig, 0, 0, width, height);
-
-            //            var encoded = canvas.toDataURL(file.type);
-            //            canvas.parentElement.removeChild(canvas);
-
-            //            callback(decode(encoded));
-            //        });
-            //    });
-            //}
+           
             function guid() {
                 function s4() {
                     return Math.floor((1 + Math.random()) * 0x10000)
