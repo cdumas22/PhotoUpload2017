@@ -162,11 +162,13 @@
             };
              //this is a public method that can be called from the input
             photoCropper.photoSelected = function (parent, file) {
-                var cropper = croppers.find(function (x) {
+                var cropper = croppers.filter(function (x) {
                     return x.container[0] === parent[0];
-                });
+                })[0];
 
-                cropper.photoSelected(file);
+                if (cropper) {
+                    cropper.photoSelected(file);
+                }
             };
 
             /*private variables*/
