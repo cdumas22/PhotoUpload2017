@@ -190,11 +190,15 @@
                 //make sure the inputs have a unique name
                 this.uniqueName = options.inputName || 'photo-' + guid();
 
+
+                //dont allow cropping if the provided an image on init
+                this.allowCropping = !options.photoUrl;
+
                 //initialize all the buttons
                 this.setNameForInput(this.uniqueName)
                     .initializeEvents()
                     .initImage(options.photoUrl);
-
+                
                 //save reference of all croppers created
                 croppers.push(this);
 
@@ -278,7 +282,7 @@
                     this.container.find('.photo-preview').toggle(showPreview);
                     this.container.find('.reset').toggle(showReset);
                     this.container.find('.accept-crop').toggle(showAccept);
-                    this.container.find('.recrop').toggle(showCrop);
+                    this.container.find('.recrop').toggle(showCrop && this.allowCropping);
 
                     return this;
                 },
@@ -318,6 +322,7 @@
                 reset: function () {
                     this.dataUrl = null;
                     this.data = null;
+                    this.allowCropping = true;
                     this.stop().trigger(this.Events.Reset);
 
                     return this;

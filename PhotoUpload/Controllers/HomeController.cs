@@ -4,6 +4,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using PhotoUpload.ViewModels;
+using System.IO;
+using System.Drawing;
+using System.Drawing.Imaging;
 
 namespace PhotoUpload.Controllers
 {
@@ -18,14 +21,17 @@ namespace PhotoUpload.Controllers
         [ValidateAntiForgeryToken]
         public IActionResult Index(IndexViewModel model)
         {
-            //if (ModelState.IsValid)
-            //{
-            //    //save the image somewhere
-            //    //await Service.Update(model.CropInformation);
+            if (ModelState.IsValid)
+            {
+                //save the image somewhere
+                //await Service.Update(model.CropInformation);
+                using (Image image = Image.FromStream(new MemoryStream(model.CropInformation.Bytes)))
+                {
+                    image.Save("wwwroot/images/output.jpg", ImageFormat.Jpeg);  // Or Png
+                    model.ImageDataUrl = "/images/output.jpg";
+                }
+            }
 
-            //    return RedirectToAction(nameof(Contact));
-            //}
-            
             return View(model);
         }
 
