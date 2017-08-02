@@ -29,6 +29,12 @@
                         $('#photo-uploads').PhotoCropper(options);
                     }, 10000);
 
+                },
+                onCrop: function(options) {
+                    console.log(options);
+                },
+                onReset: function(options) {
+                    console.log(options);
                 }
             });
             $('#photo-uploads').PhotoCropper();
@@ -323,6 +329,11 @@
                     this.dataUrl = null;
                     this.data = null;
                     this.allowCropping = true;
+
+                    if (typeof this.options.onReset === 'function') {
+                        this.options.onReset(this.options);
+                    }
+
                     this.stop().trigger(this.Events.Reset);
 
                     return this;
@@ -333,10 +344,12 @@
                     this.dataUrl = this.cropper.getCroppedCanvas(this.type === 'image/png' ? null : {
                         fillColor: '#fff'
                     }).toDataURL(this.type);
+                    
+                    if (typeof this.options.onCrop === 'function') {
+                        this.options.onCrop(this.options);
+                    }
 
-                    this.stop();
-
-                    this.trigger(this.Events.CropAccept);
+                    this.stop().trigger(this.Events.CropAccept);
                 },
                 recrop: function () {
                     if (!this.cropper) {
